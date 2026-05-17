@@ -1,0 +1,55 @@
+# ── API Framework ──────────────────────────────────
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+httpx==0.27.0
+
+# ── Base de données ─────────────────────────────────
+sqlalchemy[asyncio]==2.0.29
+asyncpg==0.29.0
+alembic==1.13.1
+geoalchemy2==0.14.7
+
+# ── Cache & Queue ───────────────────────────────────
+redis==5.0.3
+celery==5.3.6
+celery[redis]==5.3.6
+
+# ── Scraping ────────────────────────────────────────
+playwright==1.43.0
+scrapy==2.11.1
+beautifulsoup4==4.12.3
+lxml==5.2.1
+
+# ── Data processing ─────────────────────────────────
+pandas==2.2.1
+numpy==1.26.4
+shapely==2.0.3
+pyproj==3.6.1
+
+# ── ML / Déduplication ──────────────────────────────
+scikit-learn==1.4.2
+xgboost==2.0.3
+rapidfuzz==3.8.1           # fuzzy string matching ultra-rapide
+imagehash==4.3.1           # perceptual hash pour photos
+
+# ── PDF ─────────────────────────────────────────────
+reportlab==4.1.0
+weasyprint==62.3
+
+# ── Auth & Sécurité ─────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+
+# ── Monitoring & Logs ────────────────────────────────
+loguru==0.7.2
+prometheus-fastapi-instrumentator==6.1.0
+
+# ── Utils ───────────────────────────────────────────
+pydantic==2.7.0
+pydantic-settings==2.2.1
+tenacity==8.2.3            # retry logic
+geopy==2.4.1               # geocoding
+pytz==2024.1
+aiohttp==3.9.4
