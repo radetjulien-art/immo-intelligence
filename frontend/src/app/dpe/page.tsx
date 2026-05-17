@@ -39,8 +39,11 @@ export default function DPEPage() {
       setLastSync(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
       refetch();
     },
-    onError: () => {
-      setSyncResult({ status: "error", imported: 0, message: "Impossible de joindre le backend — vérifiez que le serveur tourne sur :8000" });
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
+        || (err as { message?: string })?.message
+        || "Impossible de joindre le backend — vérifiez que le serveur tourne sur :8000";
+      setSyncResult({ status: "error", imported: 0, message: msg });
     },
   });
 

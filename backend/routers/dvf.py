@@ -237,13 +237,14 @@ async def comparables(
 @router.post("/sync")
 async def sync_dvf(
     commune: str = Query(...),
+    code_commune: Optional[str] = Query(None, description="Code INSEE de la commune (ex: 75056 pour Paris)"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Importe les données DVF pour une commune.
     Attend la fin de l'opération et retourne le nombre de transactions importées.
     """
-    count = await fetch_dvf_commune(commune, db)
+    count = await fetch_dvf_commune(commune, db, code_commune=code_commune)
     return {
         "status": "done",
         "imported": count,

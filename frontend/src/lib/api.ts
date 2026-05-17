@@ -147,9 +147,10 @@ export const apiClient = {
     return data;
   },
 
-  async syncDPE(lat: number, lon: number, rayonKm = 10) {
+  async syncDPE(lat: number, lon: number, rayonKm = 15) {
     const { data } = await api.post("/dpe/sync", null, {
       params: { lat, lon, rayon_km: rayonKm },
+      timeout: 120000,
     });
     return data;
   },
@@ -169,8 +170,11 @@ export const apiClient = {
     return data;
   },
 
-  async syncDVF(commune: string) {
-    const { data } = await api.post("/dvf/sync", null, { params: { commune } });
+  async syncDVF(commune: string, codeInsee?: string) {
+    const { data } = await api.post("/dvf/sync", null, {
+      params: { commune, ...(codeInsee ? { code_commune: codeInsee } : {}) },
+      timeout: 120000,  // DVF télécharge des CSV → peut prendre 1-2 min
+    });
     return data;
   },
 

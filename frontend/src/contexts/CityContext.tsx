@@ -7,13 +7,15 @@ export interface CityState {
   lat: number;
   lon: number;
   codeInsee: string;
+  codePostal: string;
 }
 
 const DEFAULT: CityState = {
-  city:      process.env.NEXT_PUBLIC_PILOT_CITY || "Nantes",
-  lat:       parseFloat(process.env.NEXT_PUBLIC_PILOT_LAT  || "47.2184"),
-  lon:       parseFloat(process.env.NEXT_PUBLIC_PILOT_LON  || "-1.5536"),
-  codeInsee: "44109",
+  city:       process.env.NEXT_PUBLIC_PILOT_CITY || "Nantes",
+  lat:        parseFloat(process.env.NEXT_PUBLIC_PILOT_LAT  || "47.2184"),
+  lon:        parseFloat(process.env.NEXT_PUBLIC_PILOT_LON  || "-1.5536"),
+  codeInsee:  "44109",
+  codePostal: "44000",
 };
 
 interface CityContextType extends CityState {
@@ -28,7 +30,6 @@ const CityContext = createContext<CityContextType>({
 export function CityProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CityState>(DEFAULT);
 
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
   useEffect(() => {
     try {
       const saved = localStorage.getItem("immo-city");

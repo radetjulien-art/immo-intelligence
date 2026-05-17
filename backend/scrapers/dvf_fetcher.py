@@ -21,34 +21,60 @@ from models import DVFTransaction
 
 
 DVF_BASE_URL = "https://files.data.gouv.fr/geo-dvf/latest/csv"
-# Alternative API : https://api.datafoncier.cerema.fr/
+
+# Villes avec arrondissements : code INSEE principal → liste des codes INSEE réels
+# Paris: 75056 → 75101-75120 ; Lyon: 69123 → 69381-69389 ; Marseille: 13055 → 13201-13216
+ARRONDISSEMENTS = {
+    "75056": [f"751{str(i).zfill(2)}" for i in range(1, 21)],
+    "69123": [f"693{str(i).zfill(2)}" for i in range(81, 90)],
+    "13055": [f"132{str(i).zfill(2)}" for i in range(1, 17)],
+}
 
 
-async def fetch_dvf_commune(commune: str, db: AsyncSession, annees: list = None):
+async def fetch_dvf_commune(
+    commune: str,
+    db: AsyncSession,
+    code_commune: str = None,
+    annees: list = None,
+):
     """
-    Télécharge et importe les données DVF pour une commune.
-    
+    Télécharge et importe les données DVF pour une commune via l'API Etalab.
+
     Args:
-        commune: Nom de la commune (ex: "nantes")
-        db: Session DB
-        annees: Liste d'années (défaut: 3 dernières)
+        commune:      Nom de la commune (ex: "Paris")
+        code_commune: Code INSEE 5 chiffres (ex: "75056") — recommandé
+        db:           Session DB
+        annees:       Liste d'années (défaut: 3 dernières)
     """
     if annees is None:
         current_year = date.today().year
-        # DVF a ~6 mois de retard
         annees = [current_year - 1, current_year - 2, current_year - 3]
 
-    logger.info(f"📊 Import DVF pour {commune} — années {annees}")
-    total_imported = 0
+    logger.info(f"📊 Import DVF pour {commune} (code={code_commune}) — années {annees}")
 
+    # Déterminer les codes communes à interroger
+    codes_to_fetch: list[str] = []
+    if code_commune:
+        # Paris/Lyon/Marseille : remplacer le code principal par les codes arrondissements
+        codes_to_fetch = ARRONDISSEMENTS.get(code_commune, [code_commune])
+    # Si pas de code fourni, on passera le nom de commune
+
+    total_imported = 0
     async with aiohttp.ClientSession() as session:
         for annee in annees:
             try:
-                # DVF est par département : on doit connaître le code dept
-                # Pour le MVP, on télécharge le fichier national filtré via API
-                count = await _fetch_dvf_api(session, commune, annee, db)
-                total_imported += count
-                logger.info(f"  → {annee}: {count} transactions importées")
+                if codes_to_fetch:
+                    # Fetch par code INSEE (plus fiable)
+                    for code in codes_to_fetch:
+                        count = await _fetch_dvf_by_code(session, code, annee, db)
+                        total_imported += count
+                        if count:
+                            logger.info(f"  → {annee} code={code}: {count} transactions")
+                else:
+                    # Fallback : fetch par nom de commune
+                    count = await _fetch_dvf_by_name(session, commune, annee, db)
+                    total_imported += count
+                    logger.info(f"  → {annee} nom={commune}: {count} transactions")
             except Exception as e:
                 logger.error(f"Erreur DVF {commune} {annee}: {e}")
 
@@ -56,29 +82,53 @@ async def fetch_dvf_commune(commune: str, db: AsyncSession, annees: list = None)
     return total_imported
 
 
-async def _fetch_dvf_api(
+async def _fetch_dvf_by_code(
     session: aiohttp.ClientSession,
-    commune: str,
+    code_commune: str,
     annee: int,
     db: AsyncSession,
 ) -> int:
-    """
-    Utilise l'API DVF publique (Etalab) pour filtrer par commune.
-    API doc : https://api.dvf.etalab.gouv.fr/
-    """
-    # API DVF alternative plus simple pour le MVP
+    """Fetch DVF par code INSEE de commune."""
     url = "https://api.dvf.etalab.gouv.fr/dvf/mutations"
     params = {
-        "commune": commune,
+        "code_commune": code_commune,
         "nature_mutation": "Vente",
-        "type_local": "Appartement,Maison",
         "date_debut": f"{annee}-01-01",
         "date_fin": f"{annee}-12-31",
         "page_size": 500,
         "page": 1,
     }
+    return await _fetch_dvf_paginated(session, params, db)
 
+
+async def _fetch_dvf_by_name(
+    session: aiohttp.ClientSession,
+    commune: str,
+    annee: int,
+    db: AsyncSession,
+) -> int:
+    """Fetch DVF par nom de commune (fallback si pas de code INSEE)."""
+    url = "https://api.dvf.etalab.gouv.fr/dvf/mutations"
+    params = {
+        "commune": commune.upper(),  # DVF API expects uppercase
+        "nature_mutation": "Vente",
+        "date_debut": f"{annee}-01-01",
+        "date_fin": f"{annee}-12-31",
+        "page_size": 500,
+        "page": 1,
+    }
+    return await _fetch_dvf_paginated(session, params, db)
+
+
+async def _fetch_dvf_paginated(
+    session: aiohttp.ClientSession,
+    params: dict,
+    db: AsyncSession,
+) -> int:
+    """Fetch DVF avec pagination, retourne le nombre de transactions importées."""
+    url = "https://api.dvf.etalab.gouv.fr/dvf/mutations"
     imported = 0
+
     while True:
         try:
             async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=60)) as resp:
@@ -87,7 +137,7 @@ async def _fetch_dvf_api(
                 resp.raise_for_status()
                 data = await resp.json()
         except Exception as e:
-            logger.warning(f"API DVF error page {params['page']}: {e}")
+            logger.warning(f"API DVF error page {params.get('page')}: {e}")
             break
 
         mutations = data.get("results", [])
@@ -104,14 +154,13 @@ async def _fetch_dvf_api(
                 logger.debug(f"Skip mutation: {e}")
                 continue
 
-        if imported % 100 == 0 and imported > 0:
+        if imported % 200 == 0 and imported > 0:
             await db.commit()
 
-        # Pagination
         if not data.get("next"):
             break
-        params["page"] += 1
-        await asyncio.sleep(0.5)
+        params["page"] = params.get("page", 1) + 1
+        await asyncio.sleep(0.3)
 
     await db.commit()
     return imported

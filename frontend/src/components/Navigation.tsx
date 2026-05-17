@@ -18,6 +18,7 @@ const NAV = [
 interface GeoCommune {
   nom: string;
   code: string;
+  codesPostaux?: string[];
   centre?: { coordinates: [number, number] };
 }
 
@@ -45,7 +46,7 @@ export function Navigation() {
       setLoading(true);
       try {
         const res = await fetch(
-          `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=centre,code,nom&type=commune-actuelle&limit=6`
+          `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=centre,code,nom,codesPostaux&type=commune-actuelle&limit=6`
         );
         const data: GeoCommune[] = await res.json();
         setResults(data);
@@ -59,7 +60,8 @@ export function Navigation() {
 
   const pick = (commune: GeoCommune) => {
     const [lon, lat] = commune.centre?.coordinates ?? [0, 0];
-    setCity({ city: commune.nom, lat, lon, codeInsee: commune.code } as CityState);
+    const codePostal = commune.codesPostaux?.[0] ?? "";
+    setCity({ city: commune.nom, lat, lon, codeInsee: commune.code, codePostal });
     setSearching(false);
     setQuery("");
     setResults([]);
