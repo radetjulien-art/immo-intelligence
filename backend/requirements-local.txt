@@ -1,0 +1,35 @@
+# ── Dépendances minimales pour lancer le backend localement (sans Docker) ──
+# Supabase (PostgreSQL) et Upstash (Redis) sont déjà configurés dans .env
+# Aucune librairie système requise — tout s'installe via pip sur Windows/Mac/Linux
+
+# ── API ─────────────────────────────────────────────────────────────────────
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+
+# ── Base de données ──────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.29
+asyncpg==0.29.0
+alembic==1.13.1
+geoalchemy2==0.14.7
+
+# ── Queue (Celery + Upstash Redis) ───────────────────────────────────────────
+redis==5.0.3
+celery==5.3.6
+
+# ── HTTP / Scraping API ──────────────────────────────────────────────────────
+aiohttp==3.9.4
+httpx==0.27.0
+tenacity==8.2.3
+
+# ── Géospatial (wheels précompilés Windows/Mac) ──────────────────────────────
+shapely==2.0.3
+pyproj==3.6.1
+geopy==2.4.1
+
+# ── Config & Logs ────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+pydantic==2.7.0
+pydantic-settings==2.2.1
+loguru==0.7.2
+pytz==2024.1
