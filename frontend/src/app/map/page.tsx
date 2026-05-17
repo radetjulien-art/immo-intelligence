@@ -50,7 +50,6 @@ export default function MapPage() {
     let map: unknown = null;
     (async () => {
       const maplibre = await import("maplibre-gl");
-      await import("maplibre-gl/dist/maplibre-gl.css");
       map = new maplibre.Map({
         container: mapContainer.current!,
         style: {

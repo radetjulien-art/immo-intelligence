@@ -131,7 +131,6 @@ export function Navigation() {
                 style={{
                   flex: 1, border: "none", outline: "none", background: "transparent",
                   fontFamily: "Inter, sans-serif", fontSize: 12.5, color: "#18150F",
-                  placeholder: "#9C8F83",
                 }}
               />
               <button onClick={cancel} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9C8F83", padding: 0, display: "flex" }}>

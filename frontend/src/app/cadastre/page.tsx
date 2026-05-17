@@ -48,7 +48,6 @@ export default function CadastrePage() {
 
     (async () => {
       const maplibre = await import("maplibre-gl");
-      await import("maplibre-gl/dist/maplibre-gl.css");
 
       map = new maplibre.Map({
         container: mapContainer.current!,
@@ -168,7 +167,7 @@ export default function CadastrePage() {
             <Layers size={14} color="#B8965A" />
             <span style={{ fontSize: 12.5, fontWeight: 600, color: "#18150F" }}>Carte cadastrale</span>
           </div>
-          <div style={{ display: "flex", items: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ width: 14, height: 14, background: "rgba(184,150,90,0.15)", border: "1.5px solid #B8965A", borderRadius: 2 }} />
               <span style={{ fontSize: 11, color: "#9C8F83" }}>Parcelles IGN</span>
