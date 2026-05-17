@@ -174,6 +174,12 @@ export const apiClient = {
     return data;
   },
 
+  // Cadastre
+  async getCadastreParcelles(lat: number, lon: number, dist = 1000) {
+    const { data } = await api.get("/cadastre/parcelles", { params: { lat, lon, dist } });
+    return data;
+  },
+
   // Stats
   async getGlobalStats() {
     const { data } = await api.get("/stats/");

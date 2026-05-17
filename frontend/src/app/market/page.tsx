@@ -2,10 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, Bien } from "@/lib/api";
+import { useCity } from "@/contexts/CityContext";
 import { useState } from "react";
 import { Target, TrendingDown, Trophy, MapPin, Clock } from "lucide-react";
-
-const CITY = process.env.NEXT_PUBLIC_PILOT_CITY || "Nantes";
 
 const TABS = [
   { key: "stagnants",   label: "Opportunités mandat", icon: Target,       accentColor: "#C8810A" },
@@ -16,42 +15,30 @@ const TABS = [
 type TabKey = typeof TABS[number]["key"];
 
 export default function MarketPage() {
+  const { city } = useCity();
   const [view, setView] = useState<TabKey>("stagnants");
 
-  const { data: stagnants }  = useQuery({ queryKey: ["stagnants", CITY],   queryFn: () => apiClient.getBiensStagnants(CITY), enabled: view === "stagnants"   });
-  const { data: baisses }    = useQuery({ queryKey: ["baisses", CITY],     queryFn: () => apiClient.getBaissesPrix(CITY),    enabled: view === "baisses"     });
-  const { data: concurrence } = useQuery({ queryKey: ["part-marche", CITY], queryFn: () => apiClient.getPartMarche(CITY),    enabled: view === "concurrence" });
+  const { data: stagnants }   = useQuery({ queryKey: ["stagnants",   city], queryFn: () => apiClient.getBiensStagnants(city), enabled: view === "stagnants"   });
+  const { data: baisses }     = useQuery({ queryKey: ["baisses",     city], queryFn: () => apiClient.getBaissesPrix(city),    enabled: view === "baisses"     });
+  const { data: concurrence } = useQuery({ queryKey: ["part-marche", city], queryFn: () => apiClient.getPartMarche(city),    enabled: view === "concurrence" });
 
   const currentTab = TABS.find((t) => t.key === view)!;
 
   return (
     <div style={{ padding: "48px 56px" }}>
-
-      {/* ── Header ─────────────────────────────────────── */}
       <header style={{ marginBottom: 40 }}>
         <p className="eyebrow" style={{ marginBottom: 10 }}>Analyse</p>
-        <h1 className="page-title">Marché — {CITY}</h1>
+        <h1 className="page-title">Marché — {city}</h1>
         <div className="gold-rule" />
         <p style={{ fontSize: 13, color: "#6B6057", marginTop: 8 }}>Opportunités, signaux et part de marché</p>
       </header>
 
-      {/* ── Tabs ────────────────────────────────────────── */}
+      {/* Tabs */}
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 24, borderBottom: "1px solid #E5DFD8", paddingBottom: 0 }}>
         {TABS.map(({ key, label, icon: Icon, accentColor }) => {
           const active = view === key;
           return (
-            <button
-              key={key}
-              onClick={() => setView(key)}
-              style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "10px 20px",
-                fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: active ? 600 : 400,
-                cursor: "pointer", border: "none", background: "transparent",
-                color: active ? "#18150F" : "#6B6057",
-                borderBottom: active ? `2px solid ${accentColor}` : "2px solid transparent",
-                transition: "all 0.15s", marginBottom: -1,
-              }}
-            >
+            <button key={key} onClick={() => setView(key)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: active ? 600 : 400, cursor: "pointer", border: "none", background: "transparent", color: active ? "#18150F" : "#6B6057", borderBottom: active ? `2px solid ${accentColor}` : "2px solid transparent", transition: "all 0.15s", marginBottom: -1 }}>
               <Icon size={13} color={active ? accentColor : "#9C8F83"} />
               {label}
             </button>
@@ -59,27 +46,17 @@ export default function MarketPage() {
         })}
       </div>
 
-      {/* ── Context banner ──────────────────────────────── */}
-      <div
-        style={{
-          display: "flex", alignItems: "center", gap: 12, padding: "12px 18px",
-          background: "#F8F6F2", border: "1px solid #E5DFD8",
-          borderLeft: `3px solid ${currentTab.accentColor}`,
-          borderRadius: 4, marginBottom: 28,
-        }}
-      >
+      {/* Banner */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", background: "#F8F6F2", border: "1px solid #E5DFD8", borderLeft: `3px solid ${currentTab.accentColor}`, borderRadius: 4, marginBottom: 28 }}>
         <currentTab.icon size={14} color={currentTab.accentColor} />
         <p style={{ fontSize: 12.5, color: "#3D3429", fontFamily: "Inter, sans-serif" }}>
           {view === "stagnants"   && "Biens en vente depuis +60 jours avec baisses de prix — vendeur motivé, mandat fragilisé."}
           {view === "baisses"     && "Biens dont le prix a baissé récemment — signal pour recalibrer vos estimations."}
-          {view === "concurrence" && `Part de marché par agence sur ${CITY} — identifiez les concurrents dominants.`}
+          {view === "concurrence" && `Part de marché par agence sur ${city} — identifiez les concurrents dominants.`}
         </p>
       </div>
 
-      {/* ── Stagnants ───────────────────────────────────── */}
-      {view === "stagnants" && (!stagnants?.biens?.length ? (
-        <EmptyState icon="🎯" text="Aucune opportunité détectée pour le moment" />
-      ) : (
+      {view === "stagnants" && (!stagnants?.biens?.length ? <EmptyState icon="🎯" text="Aucune opportunité détectée pour le moment" /> : (
         <div className="card" style={{ overflow: "hidden" }}>
           <table className="data-table">
             <thead><tr><th>DPE</th><th>Bien</th><th>Prix</th><th>Ancienneté</th><th>Baisses</th><th>Score opportunité</th></tr></thead>
@@ -92,17 +69,10 @@ export default function MarketPage() {
                     <td><span className={`dpe-badge dpe-${b.classe_dpe || "NC"}`}>{b.classe_dpe || "?"}</span></td>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: 13, color: "#18150F" }}>{b.adresse || "Adresse NC"}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, color: "#9C8F83" }}>
-                        <MapPin size={10} />{b.commune} · {b.type_bien} · {b.surface}m²
-                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, color: "#9C8F83" }}><MapPin size={10} />{b.commune} · {b.type_bien} · {b.surface}m²</div>
                     </td>
                     <td><span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, fontSize: 13, color: "#18150F" }}>{b.prix_median ? b.prix_median.toLocaleString("fr-FR") + " €" : "—"}</span></td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Clock size={12} color="#C8810A" />
-                        <span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, color: "#C8810A", fontSize: 13 }}>{b.jours_sur_marche}j</span>
-                      </div>
-                    </td>
+                    <td><div style={{ display: "flex", alignItems: "center", gap: 6 }}><Clock size={12} color="#C8810A" /><span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, color: "#C8810A", fontSize: 13 }}>{b.jours_sur_marche}j</span></div></td>
                     <td><span className="tag tag-red">{b.nb_baisses_prix} baisse(s)</span></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -118,10 +88,7 @@ export default function MarketPage() {
         </div>
       ))}
 
-      {/* ── Baisses ─────────────────────────────────────── */}
-      {view === "baisses" && (!baisses?.biens?.length ? (
-        <EmptyState icon="📉" text="Aucune baisse de prix récente détectée" />
-      ) : (
+      {view === "baisses" && (!baisses?.biens?.length ? <EmptyState icon="📉" text="Aucune baisse de prix récente détectée" /> : (
         <div className="card" style={{ overflow: "hidden" }}>
           <table className="data-table">
             <thead><tr><th>DPE</th><th>Bien</th><th>Prix actuel</th><th>Baisses</th><th>Jours marché</th></tr></thead>
@@ -131,9 +98,7 @@ export default function MarketPage() {
                   <td><span className={`dpe-badge dpe-${b.classe_dpe || "NC"}`}>{b.classe_dpe || "?"}</span></td>
                   <td>
                     <div style={{ fontWeight: 600, fontSize: 13, color: "#18150F" }}>{b.adresse || "Adresse NC"}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, color: "#9C8F83" }}>
-                      <MapPin size={10} />{b.commune} · {b.type_bien} · {b.surface}m²
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, color: "#9C8F83" }}><MapPin size={10} />{b.commune} · {b.type_bien} · {b.surface}m²</div>
                   </td>
                   <td><span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, fontSize: 13, color: "#18150F" }}>{b.prix_median?.toLocaleString("fr-FR")} €</span></td>
                   <td><span className="tag tag-red">{b.nb_baisses_prix}× baisse</span></td>
@@ -145,17 +110,13 @@ export default function MarketPage() {
         </div>
       ))}
 
-      {/* ── Concurrence ─────────────────────────────────── */}
-      {view === "concurrence" && (!concurrence?.agences?.length ? (
-        <EmptyState icon="🏆" text="Données concurrence à charger" />
-      ) : (
+      {view === "concurrence" && (!concurrence?.agences?.length ? <EmptyState icon="🏆" text="Données concurrence à charger" /> : (
         <div className="card" style={{ overflow: "hidden" }}>
           <table className="data-table">
             <thead><tr><th>#</th><th>Agence</th><th>Part de marché</th><th>Mandats</th><th>Prix moyen</th></tr></thead>
             <tbody>
               {concurrence.agences.map((a: { agence: string; nb_mandats: number; part_pct: number; prix_moyen: number }, i: number) => {
-                const medalColors = ["#C8810A", "#9C8F83", "#B8965A"];
-                const medal = medalColors[i] || "#C9BFB4";
+                const medal = ["#C8810A", "#9C8F83", "#B8965A"][i] || "#C9BFB4";
                 return (
                   <tr key={i}>
                     <td><span style={{ fontFamily: "Cormorant Garamond, serif", fontWeight: 600, fontSize: 16, color: medal }}>#{i + 1}</span></td>

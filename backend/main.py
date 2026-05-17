@@ -11,7 +11,7 @@ import sys
 
 from config import settings
 from database import init_db
-from routers import biens, dpe, dvf, market, stats
+from routers import biens, dpe, dvf, market, stats, cadastre
 
 
 # ── Logging ──────────────────────────────────────────────────────────────────
@@ -60,7 +60,8 @@ app.include_router(biens.router,   prefix="/api/biens",   tags=["Biens"])
 app.include_router(dpe.router,     prefix="/api/dpe",     tags=["DPE"])
 app.include_router(dvf.router,     prefix="/api/dvf",     tags=["DVF"])
 app.include_router(market.router,  prefix="/api/market",  tags=["Marché"])
-app.include_router(stats.router,   prefix="/api/stats",   tags=["Stats"])
+app.include_router(stats.router,    prefix="/api/stats",    tags=["Stats"])
+app.include_router(cadastre.router, prefix="/api/cadastre", tags=["Cadastre"])
 
 
 # ── Health check ─────────────────────────────────────────────────────────────
