@@ -1,7 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Garder la fenetre ouverte peu importe ce qui se passe
 echo.
 echo  ==========================================
 echo   ImmoIntel  -  Intelligence immobiliere
@@ -11,25 +10,41 @@ echo.
 :: Definir le dossier racine du projet
 set "ROOT=%~dp0"
 
-:: ── 1. Verifier Python ───────────────────────────────────────
+:: ── 1. Trouver Python ────────────────────────────────────────
 echo  [1/4] Verification de Python...
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo  ERREUR : Python est introuvable.
-    echo  Installe Python 3.11 depuis : https://www.python.org/downloads/
-    echo  (Coche bien "Add Python to PATH" pendant l'installation)
-    echo.
-    goto fin_erreur
+
+:: Essayer le launcher Windows "py" en premier (plus fiable)
+set "PYTHON="
+where py >nul 2>&1
+if %errorlevel% equ 0 (
+    set "PYTHON=py"
+    goto python_ok
 )
-for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo        %%v trouve
+
+:: Fallback : verifier si "python" est dans le PATH (sans l'executer)
+where python >nul 2>&1
+if %errorlevel% equ 0 (
+    set "PYTHON=python"
+    goto python_ok
+)
+
+:: Ni py ni python trouves
+echo.
+echo  ERREUR : Python est introuvable.
+echo  Installe Python 3.11 depuis : https://www.python.org/downloads/
+echo  (Coche bien "Add Python to PATH" pendant l'installation)
+echo.
+goto fin_erreur
+
+:python_ok
+for /f "tokens=*" %%v in ('%PYTHON% --version 2^>^&1') do echo        %%v trouve (commande: %PYTHON%)
 
 :: ── 2. Installer les deps Python si besoin ───────────────────
 echo  [2/4] Verification des dependances Python...
-python -c "import uvicorn" >nul 2>&1
+%PYTHON% -c "import uvicorn" >nul 2>&1
 if %errorlevel% neq 0 (
     echo        Premiere installation - patiente 2-3 minutes...
-    pip install -r "%ROOT%backend\requirements-local.txt"
+    %PYTHON% -m pip install -r "%ROOT%backend\requirements-local.txt"
     if %errorlevel% neq 0 (
         echo.
         echo  ERREUR : pip install a echoue.
@@ -46,7 +61,7 @@ if %errorlevel% neq 0 (
 
 :: ── 3. Demarrer le backend dans une nouvelle fenetre ─────────
 echo  [3/4] Demarrage du backend sur :8000 ...
-set "CMD_BACKEND=cd /d "%ROOT%backend" && uvicorn main:app --reload --port 8000"
+set "CMD_BACKEND=cd /d "%ROOT%backend" && %PYTHON% -m uvicorn main:app --reload --port 8000"
 start "ImmoIntel Backend" cmd /k %CMD_BACKEND%
 
 :: Attendre que le backend soit pret
