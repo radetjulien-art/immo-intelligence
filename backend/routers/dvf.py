@@ -236,15 +236,16 @@ async def comparables(
 
 @router.post("/sync")
 async def sync_dvf(
-    background_tasks: BackgroundTasks,
     commune: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Lance l'import des données DVF pour une commune.
+    Importe les données DVF pour une commune.
+    Attend la fin de l'opération et retourne le nombre de transactions importées.
     """
-    background_tasks.add_task(fetch_dvf_commune, commune, db)
+    count = await fetch_dvf_commune(commune, db)
     return {
-        "status": "started",
-        "message": f"Import DVF lancé pour {commune}",
+        "status": "done",
+        "imported": count,
+        "message":  f"{count} transactions DVF importées pour {commune}",
     }

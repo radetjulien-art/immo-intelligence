@@ -4,17 +4,21 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient, DPELead } from "@/lib/api";
 import { useCity } from "@/contexts/CityContext";
 import { useState } from "react";
-import { RefreshCw, Download, Filter, MapPin, ArrowUpRight } from "lucide-react";
+import { RefreshCw, Download, Filter, MapPin, ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const CLASSES = ["A", "B", "C", "D", "E", "F", "G"];
+
+type SyncResult = { status: string; imported: number; skipped?: number; error?: string; message: string };
 
 export default function DPEPage() {
   const { city, lat, lon } = useCity();
   const [classes, setClasses] = useState(["E", "F", "G"]);
   const [jours,   setJours]   = useState(90);
   const [score,   setScore]   = useState(0.4);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [lastSync,   setLastSync]   = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["dpe-leads", city, classes, jours, score],
@@ -30,7 +34,14 @@ export default function DPEPage() {
 
   const sync = useMutation({
     mutationFn: () => apiClient.syncDPE(lat, lon, 15),
-    onSuccess: () => setTimeout(() => refetch(), 3000),
+    onSuccess: (data: SyncResult) => {
+      setSyncResult(data);
+      setLastSync(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+      refetch();
+    },
+    onError: () => {
+      setSyncResult({ status: "error", imported: 0, message: "Impossible de joindre le backend — vérifiez que le serveur tourne sur :8000" });
+    },
   });
 
   const toggle = (c: string) =>
@@ -67,12 +78,28 @@ export default function DPEPage() {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={exportCSV} className="btn btn-white"><Download size={13} />Export CSV</button>
-          <button onClick={() => sync.mutate()} disabled={sync.isPending} className="btn btn-primary">
-            <RefreshCw size={13} className={sync.isPending ? "animate-spin" : ""} />
-            {sync.isPending ? "Sync..." : "Sync ADEME"}
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            <button onClick={() => { setSyncResult(null); sync.mutate(); }} disabled={sync.isPending} className="btn btn-primary">
+              <RefreshCw size={13} className={sync.isPending ? "animate-spin" : ""} />
+              {sync.isPending ? "Synchronisation en cours…" : "Sync ADEME"}
+            </button>
+            {lastSync && !sync.isPending && (
+              <span style={{ fontSize: 11, color: "#9C8F83" }}>Dernière sync : {lastSync}</span>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* Résultat sync */}
+      {syncResult && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", marginBottom: 20, borderRadius: 4, border: "1px solid", borderColor: syncResult.status === "error" ? "#fecaca" : "#a7f3d0", background: syncResult.status === "error" ? "#fef2f2" : "#ecfdf5", borderLeft: `3px solid ${syncResult.status === "error" ? "#C0392B" : "#059669"}` }}>
+          {syncResult.status === "error"
+            ? <AlertCircle size={15} color="#C0392B" />
+            : <CheckCircle2 size={15} color="#059669" />}
+          <span style={{ fontSize: 13, color: "#18150F", fontFamily: "Inter, sans-serif" }}>{syncResult.message}</span>
+          <button onClick={() => setSyncResult(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer", color: "#9C8F83", fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Filtres */}
       <div className="card" style={{ padding: "18px 24px", marginBottom: 28 }}>

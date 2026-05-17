@@ -123,19 +123,22 @@ async def stats_dpe(
 
 @router.post("/sync")
 async def sync_dpe(
-    background_tasks: BackgroundTasks,
     lat: float = Query(...),
     lon: float = Query(...),
     rayon_km: float = Query(10.0),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Lance une synchronisation des DPE ADEME en arrière-plan.
+    Synchronise les DPE ADEME pour la zone donnée.
+    Attend la fin de l'opération et retourne le résultat.
     """
-    background_tasks.add_task(fetch_dpe_zone, lat, lon, rayon_km, db)
+    result = await fetch_dpe_zone(lat, lon, rayon_km, db)
     return {
-        "status": "started",
-        "message": f"Synchronisation DPE lancée pour zone ({lat}, {lon}) rayon {rayon_km}km",
+        "status": "done",
+        "imported": result.get("imported", 0),
+        "skipped":  result.get("skipped", 0),
+        "error":    result.get("error"),
+        "message":  f"{result.get('imported', 0)} DPE importés, {result.get('skipped', 0)} déjà en base",
     }
 
 

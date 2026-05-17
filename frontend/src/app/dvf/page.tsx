@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api";
 import { useCity } from "@/contexts/CityContext";
 import { useState } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { RefreshCw, TrendingUp, Home, Building } from "lucide-react";
+import { RefreshCw, TrendingUp, Home, Building, CheckCircle2, AlertCircle } from "lucide-react";
 
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) => {
   if (!active || !payload?.length) return null;
@@ -22,13 +22,29 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   );
 };
 
+type SyncResult = { status: string; imported: number; message: string };
+
 export default function DVFPage() {
   const { city } = useCity();
-  const [type, setType] = useState<string | undefined>(undefined);
+  const [type, setType]         = useState<string | undefined>(undefined);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [lastSync,   setLastSync]   = useState<string | null>(null);
 
-  const { data: prix }      = useQuery({ queryKey: ["prix-median", city, type],  queryFn: () => apiClient.getPrixMedian(city, type) });
-  const { data: tendances } = useQuery({ queryKey: ["tendances", city],           queryFn: () => apiClient.getTendances(city, 24) });
-  const sync = useMutation({ mutationFn: () => apiClient.syncDVF(city) });
+  const { data: prix,     refetch: refetchPrix }      = useQuery({ queryKey: ["prix-median", city, type],  queryFn: () => apiClient.getPrixMedian(city, type) });
+  const { data: tendances, refetch: refetchTendances } = useQuery({ queryKey: ["tendances", city],           queryFn: () => apiClient.getTendances(city, 24) });
+
+  const sync = useMutation({
+    mutationFn: () => apiClient.syncDVF(city),
+    onSuccess: (data: SyncResult) => {
+      setSyncResult(data);
+      setLastSync(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+      refetchPrix();
+      refetchTendances();
+    },
+    onError: () => {
+      setSyncResult({ status: "error", imported: 0, message: "Impossible de joindre le backend — vérifiez que le serveur tourne sur :8000" });
+    },
+  });
 
   const chart = tendances?.data?.map((d: { mois: string; nb_transactions: number; prix_m2_median: number }) => ({
     mois: d.mois.slice(5), nb: d.nb_transactions, prix_m2: d.prix_m2_median,
@@ -49,11 +65,27 @@ export default function DVFPage() {
           <div className="gold-rule" />
           <p style={{ fontSize: 13, color: "#6B6057", marginTop: 8 }}>Demandes de Valeurs Foncières · Source data.gouv.fr</p>
         </div>
-        <button onClick={() => sync.mutate()} disabled={sync.isPending} className="btn btn-primary">
-          <RefreshCw size={13} className={sync.isPending ? "animate-spin" : ""} />
-          {sync.isPending ? "Import..." : "Importer DVF"}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <button onClick={() => { setSyncResult(null); sync.mutate(); }} disabled={sync.isPending} className="btn btn-primary">
+            <RefreshCw size={13} className={sync.isPending ? "animate-spin" : ""} />
+            {sync.isPending ? "Import en cours…" : "Importer DVF"}
+          </button>
+          {lastSync && !sync.isPending && (
+            <span style={{ fontSize: 11, color: "#9C8F83" }}>Dernière sync : {lastSync}</span>
+          )}
+        </div>
       </header>
+
+      {/* Résultat sync */}
+      {syncResult && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", marginBottom: 20, borderRadius: 4, border: "1px solid", borderColor: syncResult.status === "error" ? "#fecaca" : "#a7f3d0", background: syncResult.status === "error" ? "#fef2f2" : "#ecfdf5", borderLeft: `3px solid ${syncResult.status === "error" ? "#C0392B" : "#059669"}` }}>
+          {syncResult.status === "error"
+            ? <AlertCircle size={15} color="#C0392B" />
+            : <CheckCircle2 size={15} color="#059669" />}
+          <span style={{ fontSize: 13, color: "#18150F" }}>{syncResult.message}</span>
+          <button onClick={() => setSyncResult(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer", color: "#9C8F83", fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Filtres */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
