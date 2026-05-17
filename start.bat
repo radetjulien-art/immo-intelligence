@@ -56,11 +56,11 @@ if %errorlevel% neq 0 (
 )
 
 :: ── 3. Demarrer le backend ────────────────────────────────────
-:: /d definit le repertoire de travail — pas besoin de cd
+:: /d fixe le repertoire de travail — pas besoin de cd
 echo  [3/4] Demarrage du backend sur :8000 ...
 start "ImmoIntel Backend" /d "%ROOT%backend" cmd /k "%PYTHON% -m uvicorn main:app --reload --port 8000"
 
-:: Attendre que le backend soit pret
+:: Attendre que le backend soit pret (max 40s)
 echo        Attente du backend...
 set tries=0
 :boucle_backend
@@ -69,7 +69,7 @@ if %tries% gtr 40 (
     echo        Le backend prend du temps - verifie la fenetre Backend.
     goto lancer_frontend
 )
-powershell -NoProfile -Command "try{Invoke-WebRequest http://localhost:8000/health -UseBasicParsing -TimeoutSec 1 >$null 2>&1; exit 0}catch{exit 1}" >nul 2>&1
+powershell -NoProfile -Command "$r=$null;try{$r=Invoke-WebRequest -Uri 'http://localhost:8000/health' -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop}catch{};if($r -and $r.StatusCode -eq 200){exit 0}else{exit 1}" >nul 2>&1
 if %errorlevel% neq 0 (
     timeout /t 1 /nobreak >nul
     goto boucle_backend
@@ -81,16 +81,16 @@ echo        Backend pret !
 echo  [4/4] Demarrage du frontend sur :3000 ...
 start "ImmoIntel Frontend" /d "%ROOT%frontend" cmd /k "npm run dev"
 
-:: Attendre que le frontend soit pret
+:: Attendre que le frontend soit pret (max 120s - compilation Next.js)
 echo        Attente du frontend (compilation ~30s)...
 set tries=0
 :boucle_frontend
 set /a tries+=1
-if %tries% gtr 90 (
+if %tries% gtr 120 (
     echo        Ouverture du navigateur quand meme...
     goto ouvrir
 )
-powershell -NoProfile -Command "try{Invoke-WebRequest http://localhost:3000 -UseBasicParsing -TimeoutSec 1 >$null 2>&1; exit 0}catch{exit 1}" >nul 2>&1
+powershell -NoProfile -Command "$r=$null;try{$r=Invoke-WebRequest -Uri 'http://localhost:3000' -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop}catch{};if($r -and $r.StatusCode -lt 500){exit 0}else{exit 1}" >nul 2>&1
 if %errorlevel% neq 0 (
     timeout /t 1 /nobreak >nul
     goto boucle_frontend
@@ -101,10 +101,10 @@ if %errorlevel% neq 0 (
 echo.
 echo  ==========================================
 echo   PRET !
-echo   http://localhost:3000  (ouvre dans le navigateur)
+echo   http://localhost:3000
 echo  ==========================================
 echo.
-start "" "http://localhost:3000"
+powershell -NoProfile -Command "Start-Process 'http://localhost:3000'"
 echo  Garde les fenetres Backend et Frontend ouvertes.
 echo.
 goto fin_ok
