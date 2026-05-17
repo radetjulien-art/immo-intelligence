@@ -13,22 +13,18 @@ set "ROOT=%~dp0"
 :: ── 1. Trouver Python ────────────────────────────────────────
 echo  [1/4] Verification de Python...
 
-:: Essayer le launcher Windows "py" en premier (plus fiable)
 set "PYTHON="
 where py >nul 2>&1
 if %errorlevel% equ 0 (
     set "PYTHON=py"
     goto python_ok
 )
-
-:: Fallback : verifier si "python" est dans le PATH (sans l'executer)
 where python >nul 2>&1
 if %errorlevel% equ 0 (
     set "PYTHON=python"
     goto python_ok
 )
 
-:: Ni py ni python trouves
 echo.
 echo  ERREUR : Python est introuvable.
 echo  Installe Python 3.11 depuis : https://www.python.org/downloads/
@@ -37,7 +33,7 @@ echo.
 goto fin_erreur
 
 :python_ok
-for /f "tokens=*" %%v in ('%PYTHON% --version 2^>^&1') do echo        %%v trouve (commande: %PYTHON%)
+for /f "tokens=*" %%v in ('%PYTHON% --version 2^>^&1') do echo        %%v trouve
 
 :: ── 2. Installer les deps Python si besoin ───────────────────
 echo  [2/4] Verification des dependances Python...
@@ -49,7 +45,7 @@ if %errorlevel% neq 0 (
         echo.
         echo  ERREUR : pip install a echoue.
         echo  Ouvre un terminal et lance :
-        echo    cd backend
+        echo    cd "%ROOT%backend"
         echo    pip install -r requirements-local.txt
         echo.
         goto fin_erreur
@@ -59,10 +55,10 @@ if %errorlevel% neq 0 (
     echo        Dependances deja installees.
 )
 
-:: ── 3. Demarrer le backend dans une nouvelle fenetre ─────────
+:: ── 3. Demarrer le backend ────────────────────────────────────
+:: /d definit le repertoire de travail — pas besoin de cd
 echo  [3/4] Demarrage du backend sur :8000 ...
-set "CMD_BACKEND=cd /d "%ROOT%backend" && %PYTHON% -m uvicorn main:app --reload --port 8000"
-start "ImmoIntel Backend" cmd /k %CMD_BACKEND%
+start "ImmoIntel Backend" /d "%ROOT%backend" cmd /k "%PYTHON% -m uvicorn main:app --reload --port 8000"
 
 :: Attendre que le backend soit pret
 echo        Attente du backend...
@@ -80,11 +76,10 @@ if %errorlevel% neq 0 (
 )
 echo        Backend pret !
 
-:: ── 4. Demarrer le frontend dans une nouvelle fenetre ────────
+:: ── 4. Demarrer le frontend ───────────────────────────────────
 :lancer_frontend
 echo  [4/4] Demarrage du frontend sur :3000 ...
-set "CMD_FRONTEND=cd /d "%ROOT%frontend" && npm run dev"
-start "ImmoIntel Frontend" cmd /k %CMD_FRONTEND%
+start "ImmoIntel Frontend" /d "%ROOT%frontend" cmd /k "npm run dev"
 
 :: Attendre que le frontend soit pret
 echo        Attente du frontend (compilation ~30s)...
