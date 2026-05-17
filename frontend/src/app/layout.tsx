@@ -4,18 +4,25 @@ import { Navigation } from "@/components/Navigation";
 import { QueryProvider } from "@/components/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "Immo Intelligence — Copilote Data de l'Agent Immobilier",
-  description: "Plateforme SaaS de data intelligence immobilière pour agences indépendantes",
+  title: "ImmoIntel — Intelligence immobilière",
+  description: "Plateforme d'analyse immobilière professionnelle",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body>
+      <body style={{ background: "#F8F6F2", color: "#18150F", margin: 0, padding: 0 }}>
         <QueryProvider>
-          <div className="flex h-screen overflow-hidden">
+          <div style={{ display: "flex", minHeight: "100vh" }}>
             <Navigation />
-            <main className="flex-1 overflow-auto" style={{ background: "var(--page-bg)" }}>
+            <main
+              style={{
+                flex: 1,
+                overflow: "auto",
+                background: "#F8F6F2",
+                minWidth: 0,
+              }}
+            >
               {children}
             </main>
           </div>

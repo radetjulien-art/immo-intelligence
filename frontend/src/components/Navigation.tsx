@@ -2,90 +2,160 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard, Map, Zap, TrendingUp,
-  BarChart2, Settings, Building2
-} from "lucide-react";
+import { LayoutDashboard, Zap, TrendingUp, Map, BarChart2, Settings } from "lucide-react";
+
+const PILOT = process.env.NEXT_PUBLIC_PILOT_CITY || "Nantes";
 
 const NAV = [
-  { href: "/",       icon: LayoutDashboard, label: "Tableau de bord" },
-  { href: "/map",    icon: Map,             label: "Carte" },
-  { href: "/dpe",    icon: Zap,             label: "Leads DPE" },
-  { href: "/dvf",    icon: TrendingUp,      label: "Prix réels" },
-  { href: "/market", icon: BarChart2,       label: "Marché" },
+  { href: "/",        label: "Tableau de bord",  icon: LayoutDashboard },
+  { href: "/dpe",     label: "Radar DPE",         icon: Zap },
+  { href: "/dvf",     label: "Prix DVF",          icon: TrendingUp },
+  { href: "/market",  label: "Marché",            icon: BarChart2 },
+  { href: "/map",     label: "Carte",             icon: Map },
 ];
 
 export function Navigation() {
-  const path = usePathname();
+  const pathname = usePathname();
 
   return (
     <nav
-      className="w-52 flex flex-col h-screen shrink-0"
-      style={{ background: "var(--white)", borderRight: "1px solid var(--border)" }}
+      style={{
+        width: 220,
+        minHeight: "100vh",
+        background: "#FFFFFF",
+        borderRight: "1px solid #E5DFD8",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+      }}
     >
-      {/* ── Logo ───────────────────────────────────────────────────────── */}
-      <div className="px-5 pt-5 pb-4" style={{ borderBottom: "1px solid var(--border)" }}>
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "var(--blue-600)", boxShadow: "0 2px 6px rgba(26,86,219,0.3)" }}
+      {/* Logo */}
+      <div
+        style={{
+          padding: "28px 24px 24px",
+          borderBottom: "1px solid #E5DFD8",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "Cormorant Garamond, Georgia, serif",
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: "0.01em",
+            color: "#18150F",
+            lineHeight: 1.1,
+          }}
+        >
+          ImmoIntel
+        </div>
+        <div
+          style={{
+            marginTop: 4,
+            fontFamily: "Inter, sans-serif",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "#B8965A",
+          }}
+        >
+          Intelligence immobilière
+        </div>
+      </div>
+
+      {/* Zone pilote */}
+      <div
+        style={{
+          margin: "16px 16px 8px",
+          padding: "10px 14px",
+          background: "#F8F6F2",
+          border: "1px solid #E5DFD8",
+          borderRadius: 4,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9.5,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "#9C8F83",
+            marginBottom: 3,
+          }}
+        >
+          Zone pilote
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#059669",
+              flexShrink: 0,
+              boxShadow: "0 0 0 2px rgba(5,150,105,0.2)",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "Inter, sans-serif",
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: "#18150F",
+            }}
           >
-            <Building2 size={15} color="white" />
-          </div>
-          <div>
-            <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.01em" }}>
-              ImmoIntel
-            </div>
-            <div style={{ fontSize: "10px", color: "var(--gray-400)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-              Data · IA
-            </div>
-          </div>
+            {PILOT}
+          </span>
         </div>
       </div>
 
-      {/* ── Zone pilote ────────────────────────────────────────────────── */}
-      <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-        <div
-          className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
-          style={{ background: "var(--blue-50)", border: "1px solid var(--blue-100)" }}
-        >
-          <div className="live-dot shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>Nantes — 44000</div>
-            <div style={{ fontSize: "10px", color: "var(--gray-500)" }}>Zone pilote active</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Nav items ──────────────────────────────────────────────────── */}
-      <div className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <div
-          className="px-2 pb-2"
-          style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.08em", textTransform: "uppercase" }}
-        >
-          Menu
-        </div>
-        {NAV.map(({ href, icon: Icon, label }) => {
-          const active = href === "/" ? path === "/" : path.startsWith(href);
+      {/* Navigation items */}
+      <div style={{ flex: 1, padding: "8px 0" }}>
+        {NAV.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all"
               style={{
-                fontSize: "13px",
-                fontWeight: active ? 600 : 500,
-                color: active ? "var(--blue-600)" : "var(--gray-500)",
-                background: active ? "var(--blue-50)" : "transparent",
-                borderLeft: `2px solid ${active ? "var(--blue-600)" : "transparent"}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 20px",
+                margin: "2px 8px",
+                borderRadius: 4,
+                fontFamily: "Inter, sans-serif",
+                fontSize: 13,
+                fontWeight: active ? 600 : 400,
+                color: active ? "#18150F" : "#6B6057",
+                background: active ? "#F2EFE9" : "transparent",
+                borderLeft: active ? "2px solid #B8965A" : "2px solid transparent",
                 textDecoration: "none",
+                transition: "all 0.15s ease",
               }}
-              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "var(--gray-50)"; }}
-              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLElement).style.color = "#18150F";
+                  (e.currentTarget as HTMLElement).style.background = "#F8F6F2";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLElement).style.color = "#6B6057";
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                }
+              }}
             >
               <Icon
-                size={15}
-                style={{ color: active ? "var(--blue-600)" : "var(--gray-400)", flexShrink: 0 }}
+                size={14}
+                color={active ? "#B8965A" : "#9C8F83"}
+                strokeWidth={active ? 2 : 1.5}
               />
               {label}
             </Link>
@@ -93,16 +163,31 @@ export function Navigation() {
         })}
       </div>
 
-      {/* ── Settings ───────────────────────────────────────────────────── */}
-      <div className="px-3 pb-4" style={{ borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
+      {/* Footer */}
+      <div style={{ padding: "16px 16px 24px", borderTop: "1px solid #E5DFD8" }}>
         <Link
           href="/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all"
-          style={{ fontSize: "13px", fontWeight: 500, color: "var(--gray-500)", textDecoration: "none" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--gray-50)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 12px",
+            borderRadius: 4,
+            fontFamily: "Inter, sans-serif",
+            fontSize: 12.5,
+            color: "#9C8F83",
+            textDecoration: "none",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.color = "#18150F";
+            (e.currentTarget as HTMLElement).style.background = "#F8F6F2";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.color = "#9C8F83";
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+          }}
         >
-          <Settings size={15} style={{ color: "var(--gray-400)", flexShrink: 0 }} />
+          <Settings size={13} strokeWidth={1.5} />
           Paramètres
         </Link>
       </div>

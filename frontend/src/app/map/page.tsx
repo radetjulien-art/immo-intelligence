@@ -3,19 +3,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
-import clsx from "clsx";
+import { Home, Zap, BarChart2, X } from "lucide-react";
 
 const PILOT_LAT = parseFloat(process.env.NEXT_PUBLIC_PILOT_LAT || "47.2184");
 const PILOT_LON = parseFloat(process.env.NEXT_PUBLIC_PILOT_LON || "-1.5536");
 
-// Couleur par classe DPE
 const DPE_COLORS: Record<string, string> = {
   A: "#059669", B: "#10b981", C: "#84cc16",
   D: "#eab308", E: "#f97316", F: "#ef4444", G: "#991b1b",
-  NC: "#475569",
+  NC: "#9C8F83",
 };
 
 type MapMode = "biens" | "dpe" | "dvf";
+
+const MODES: { key: MapMode; label: string; icon: typeof Home }[] = [
+  { key: "biens", label: "Biens en vente", icon: Home },
+  { key: "dpe",   label: "Leads DPE",      icon: Zap },
+  { key: "dvf",   label: "Ventes DVF",     icon: BarChart2 },
+];
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -25,34 +30,21 @@ export default function MapPage() {
 
   const { data: biensData } = useQuery({
     queryKey: ["biens-map", mode],
-    queryFn: () =>
-      mode === "biens"
-        ? apiClient.getBiensMap(PILOT_LAT, PILOT_LON, 15)
-        : Promise.resolve(null),
+    queryFn: () => mode === "biens" ? apiClient.getBiensMap(PILOT_LAT, PILOT_LON, 15) : Promise.resolve(null),
     enabled: mode === "biens",
   });
 
   const { data: dpeData } = useQuery({
     queryKey: ["dpe-map"],
-    queryFn: () =>
-      apiClient.getDPELeads({
-        lat: PILOT_LAT,
-        lon: PILOT_LON,
-        rayon_km: 15,
-        jours_recents: 180,
-        score_min: 0.3,
-        limit: 500,
-      }),
+    queryFn: () => apiClient.getDPELeads({ lat: PILOT_LAT, lon: PILOT_LON, rayon_km: 15, jours_recents: 180, score_min: 0.3, limit: 500 }),
     enabled: mode === "dpe",
   });
 
-  // Initialiser MapLibre
   useEffect(() => {
     if (!mapContainer.current) return;
-
     let map: unknown = null;
 
-    const initMap = async () => {
+    (async () => {
       const maplibre = await import("maplibre-gl");
       await import("maplibre-gl/dist/maplibre-gl.css");
 
@@ -68,34 +60,24 @@ export default function MapPage() {
               attribution: "© OpenStreetMap contributors",
             },
           },
-          layers: [
-            {
-              id: "osm-tiles",
-              type: "raster",
-              source: "osm-tiles",
-              paint: {
-                "raster-saturation": -0.8,
-                "raster-brightness-min": 0.1,
-                "raster-brightness-max": 0.4,
-              },
-            },
-          ],
+          layers: [{
+            id: "osm-tiles", type: "raster", source: "osm-tiles",
+            paint: { "raster-saturation": -0.5, "raster-brightness-min": 0.65, "raster-brightness-max": 1, "raster-contrast": -0.08 },
+          }],
         },
         center: [PILOT_LON, PILOT_LAT],
         zoom: 12,
       });
 
       mapRef.current = map;
-    };
-
-    initMap();
+    })();
 
     return () => {
-      if (map && (map as { remove: () => void }).remove) (map as { remove: () => void }).remove();
+      if (map && (map as { remove: () => void }).remove)
+        (map as { remove: () => void }).remove();
     };
   }, []);
 
-  // Ajouter les points sur la carte
   useEffect(() => {
     const map = mapRef.current as {
       getSource: (id: string) => unknown;
@@ -112,12 +94,8 @@ export default function MapPage() {
             type: "Feature" as const,
             geometry: { type: "Point" as const, coordinates: [f.lon, f.lat] },
             properties: {
-              prix: f.prix,
-              surface: f.surface,
-              type: f.type,
-              dpe: f.dpe || "NC",
-              jours: f.jours,
-              score: f.score,
+              prix: f.prix, surface: f.surface, type: f.type,
+              dpe: f.dpe || "NC", jours: f.jours, score: f.score,
               agences: (f.agences || []).join(", "),
               color: DPE_COLORS[f.dpe] || DPE_COLORS.NC,
             },
@@ -127,10 +105,8 @@ export default function MapPage() {
             type: "Feature" as const,
             geometry: { type: "Point" as const, coordinates: [d.longitude, d.latitude] },
             properties: {
-              adresse: d.adresse,
-              dpe: d.classe_conso_energie || "NC",
-              surface: d.surface_habitable,
-              score: d.score_vente_probable,
+              adresse: d.adresse, dpe: d.classe_conso_energie || "NC",
+              surface: d.surface_habitable, score: d.score_vente_probable,
               priorite: d.score_priorite_contact,
               color: DPE_COLORS[d.classe_conso_energie] || DPE_COLORS.NC,
             },
@@ -144,121 +120,123 @@ export default function MapPage() {
     } else {
       map.addSource("points", { type: "geojson", data: geojson });
       map.addLayer({
-        id: "points-layer",
-        type: "circle",
-        source: "points",
+        id: "points-layer", type: "circle", source: "points",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 8],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 5, 14, 10],
           "circle-color": ["get", "color"],
-          "circle-opacity": 0.85,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "rgba(255,255,255,0.3)",
+          "circle-opacity": 0.9,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
         },
       });
-
       map.on("click", "points-layer", (e: unknown) => {
         const evt = e as { features?: Array<{ properties: unknown }> };
-        if (evt.features?.[0]) {
-          setSelectedFeature(evt.features[0].properties);
-        }
+        if (evt.features?.[0]) setSelectedFeature(evt.features[0].properties);
       });
-
-      map.on("mouseenter", "points-layer", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", "points-layer", () => {
-        map.getCanvas().style.cursor = "";
-      });
+      map.on("mouseenter", "points-layer", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "points-layer", () => { map.getCanvas().style.cursor = ""; });
     }
   }, [biensData, dpeData, mode]);
 
   const sf = selectedFeature as Record<string, unknown> | null;
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Toolbar */}
-      <div
-        className="flex items-center gap-3 px-5 py-3 border-b shrink-0"
-        style={{ background: "var(--bg-secondary)", borderColor: "var(--border)" }}
-      >
-        <span className="text-sm text-slate-500 mr-1">Afficher :</span>
-        {(["biens", "dpe", "dvf"] as MapMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={clsx(
-              "px-3 py-1.5 text-xs font-medium rounded transition-all",
-              mode === m ? "text-white" : "text-slate-500 hover:text-slate-300"
-            )}
-            style={
-              mode === m
-                ? { background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.4)" }
-                : {}
-            }
-          >
-            {m === "biens" ? "🏠 Biens en vente" : m === "dpe" ? "⚡ Leads DPE" : "📊 Ventes DVF"}
-          </button>
-        ))}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
 
-        {/* Légende DPE */}
-        <div className="ml-auto flex items-center gap-2">
-          {Object.entries(DPE_COLORS).filter(([k]) => k !== "NC").map(([cls, color]) => (
-            <div key={cls} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-              <span className="text-xs text-slate-600">{cls}</span>
-            </div>
-          ))}
+      {/* ── Toolbar ────────────────────────────────────── */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 20, padding: "14px 24px",
+        background: "#FFFFFF", borderBottom: "1px solid #E5DFD8", flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9C8F83", fontFamily: "Inter, sans-serif" }}>
+          Couche
+        </span>
+        <div style={{ display: "flex", gap: 4 }}>
+          {MODES.map(({ key, label, icon: Icon }) => {
+            const active = mode === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setMode(key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+                  borderRadius: 4, fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+                  fontFamily: "Inter, sans-serif", transition: "all 0.15s",
+                  border: "1px solid",
+                  borderColor: active ? "#1B2A4A" : "#E5DFD8",
+                  background: active ? "#1B2A4A" : "#FFFFFF",
+                  color: active ? "#FFFFFF" : "#6B6057",
+                }}
+              >
+                <Icon size={12} />{label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9C8F83", fontFamily: "Inter, sans-serif" }}>
+            Légende DPE
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {Object.entries(DPE_COLORS).filter(([k]) => k !== "NC").map(([cls, color]) => (
+              <div key={cls} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, boxShadow: "0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,0.1)" }} />
+                <span style={{ fontSize: 11.5, fontFamily: "JetBrains Mono, monospace", fontWeight: 600, color: "#6B6057" }}>{cls}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Map + sidebar */}
-      <div className="flex-1 flex relative">
-        <div ref={mapContainer} className="flex-1" />
+      {/* ── Map + panel ─────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", position: "relative" }}>
+        <div ref={mapContainer} style={{ flex: 1 }} />
 
-        {/* Detail panel */}
+        {/* ── Feature panel ──────────────────────────────── */}
         {sf && (
           <div
-            className="absolute top-4 right-4 w-72 card p-4 text-sm space-y-2"
-            style={{ zIndex: 10 }}
+            style={{
+              position: "absolute", top: 16, right: 16, width: 300,
+              background: "#FFFFFF", border: "1px solid #E5DFD8", borderRadius: 4,
+              boxShadow: "0 8px 32px rgba(24,21,15,0.12)", padding: "20px", zIndex: 10,
+            }}
           >
             <button
               onClick={() => setSelectedFeature(null)}
-              className="absolute top-2 right-2 text-slate-600 hover:text-slate-400 text-xs"
+              style={{
+                position: "absolute", top: 12, right: 12, width: 26, height: 26,
+                borderRadius: 4, border: "1px solid #E5DFD8", background: "#FFFFFF",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", color: "#9C8F83",
+              }}
             >
-              ✕
+              <X size={12} />
             </button>
 
             {mode === "biens" && (
               <>
-                <div className="flex items-center gap-2">
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, paddingRight: 32 }}>
                   <span className={`dpe-badge dpe-${sf.dpe}`}>{sf.dpe as string}</span>
-                  <span className="font-medium text-slate-200">{sf.type as string}</span>
+                  <span style={{ fontFamily: "Cormorant Garamond, serif", fontSize: 16, fontWeight: 500, color: "#18150F" }}>{sf.type as string}</span>
                 </div>
-                {sf.prix && (
-                  <div>
-                    <span className="text-slate-500 text-xs">Prix</span>
-                    <div className="mono font-semibold text-slate-100">
+                {sf.prix !== undefined && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9C8F83", marginBottom: 4 }}>Prix</div>
+                    <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: 28, fontWeight: 400, color: "#18150F", lineHeight: 1 }}>
                       {(sf.prix as number).toLocaleString("fr-FR")} €
                     </div>
                   </div>
                 )}
-                {sf.surface && (
-                  <div className="text-xs text-slate-500">
-                    {sf.surface as number} m² · {sf.jours as number}j sur le marché
-                  </div>
+                {sf.surface !== undefined && (
+                  <div style={{ fontSize: 12, color: "#6B6057", marginBottom: 12 }}>{sf.surface as number} m² · {sf.jours as number}j sur le marché</div>
                 )}
-                {sf.agences && (
-                  <div className="text-xs text-slate-500 truncate">📋 {sf.agences as string}</div>
-                )}
-                <div>
-                  <div className="score-bar">
-                    <div
-                      className="score-bar-fill"
-                      style={{ width: `${((sf.score as number) || 0) * 100}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1">
-                    Score opportunité : {Math.round(((sf.score as number) || 0) * 100)}%
+                {sf.agences && <div style={{ fontSize: 11.5, color: "#9C8F83", marginBottom: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📋 {sf.agences as string}</div>}
+                <div style={{ borderTop: "1px solid #E5DFD8", paddingTop: 14 }}>
+                  <div className="progress"><div className="progress-fill" style={{ width: `${((sf.score as number) || 0) * 100}%`, background: "#B8965A" }} /></div>
+                  <div style={{ fontSize: 11.5, color: "#6B6057", marginTop: 6 }}>
+                    Score opportunité :{" "}
+                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, color: "#B8965A" }}>{Math.round(((sf.score as number) || 0) * 100)}%</span>
                   </div>
                 </div>
               </>
@@ -266,23 +244,16 @@ export default function MapPage() {
 
             {mode === "dpe" && (
               <>
-                <div className="flex items-center gap-2">
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, paddingRight: 32 }}>
                   <span className={`dpe-badge dpe-${sf.dpe}`}>{sf.dpe as string}</span>
-                  <span className="font-medium text-slate-200 text-xs truncate">{sf.adresse as string}</span>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: "#18150F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sf.adresse as string}</span>
                 </div>
-                <div className="text-xs text-slate-500">{sf.surface as number} m²</div>
-                <div>
-                  <div className="score-bar">
-                    <div
-                      className="score-bar-fill"
-                      style={{
-                        width: `${((sf.score as number) || 0) * 100}%`,
-                        background: "linear-gradient(90deg, #ef4444, #f97316)",
-                      }}
-                    />
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1">
-                    Probabilité vente : {Math.round(((sf.score as number) || 0) * 100)}%
+                <div style={{ fontSize: 12, color: "#6B6057", marginBottom: 14 }}>{sf.surface as number} m²</div>
+                <div style={{ borderTop: "1px solid #E5DFD8", paddingTop: 14 }}>
+                  <div className="progress"><div className="progress-fill" style={{ width: `${((sf.score as number) || 0) * 100}%`, background: "#C0392B" }} /></div>
+                  <div style={{ fontSize: 11.5, color: "#6B6057", marginTop: 6 }}>
+                    Probabilité vente :{" "}
+                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, color: "#C0392B" }}>{Math.round(((sf.score as number) || 0) * 100)}%</span>
                   </div>
                 </div>
               </>

@@ -3,20 +3,25 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useState } from "react";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { RefreshCw, TrendingUp, Home, Building, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid,
+} from "recharts";
+import { RefreshCw, TrendingUp, Home, Building } from "lucide-react";
 
 const CITY = process.env.NEXT_PUBLIC_PILOT_CITY || "Nantes";
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) => {
+const CustomTooltip = ({
+  active, payload, label,
+}: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 16px", boxShadow: "var(--shadow-md)", fontSize: "12px" }}>
-      <p style={{ fontWeight: 700, color: "var(--gray-400)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "10px" }}>{label}</p>
+    <div style={{ background: "#FFFFFF", border: "1px solid #E5DFD8", borderRadius: 4, padding: "12px 16px", boxShadow: "0 4px 16px rgba(24,21,15,0.08)" }}>
+      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9C8F83", marginBottom: 8 }}>{label}</p>
       {payload.map((p, i) => (
-        <div key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: "1rem", fontWeight: 600, color: "var(--gray-900)" }}>
+        <div key={i} style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600, fontSize: 15, color: "#18150F" }}>
           {typeof p.value === "number" ? p.value.toLocaleString("fr-FR") : p.value}
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "var(--gray-400)", marginLeft: "4px" }}>
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: "#9C8F83", marginLeft: 6 }}>
             {p.name === "prix_m2" ? "€/m²" : "ventes"}
           </span>
         </div>
@@ -28,158 +33,154 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 export default function DVFPage() {
   const [type, setType] = useState<string | undefined>(undefined);
 
-  const { data: prix } = useQuery({ queryKey: ["prix-median", CITY, type], queryFn: () => apiClient.getPrixMedian(CITY, type) });
-  const { data: tendances } = useQuery({ queryKey: ["tendances", CITY], queryFn: () => apiClient.getTendances(CITY, 24) });
+  const { data: prix }     = useQuery({ queryKey: ["prix-median", CITY, type], queryFn: () => apiClient.getPrixMedian(CITY, type) });
+  const { data: tendances } = useQuery({ queryKey: ["tendances", CITY],         queryFn: () => apiClient.getTendances(CITY, 24) });
   const sync = useMutation({ mutationFn: () => apiClient.syncDVF(CITY) });
 
-  const chart = tendances?.data?.map((d: { mois: string; nb_transactions: number; prix_m2_median: number }) => ({
-    mois: d.mois.slice(5), nb: d.nb_transactions, prix_m2: d.prix_m2_median,
-  })) || [];
+  const chart = tendances?.data?.map(
+    (d: { mois: string; nb_transactions: number; prix_m2_median: number }) => ({
+      mois:    d.mois.slice(5),
+      nb:      d.nb_transactions,
+      prix_m2: d.prix_m2_median,
+    })
+  ) || [];
 
   const median = prix?.prix_m2?.median;
-  const q1 = prix?.prix_m2?.q1;
-  const q3 = prix?.prix_m2?.q3;
-  const nbTx = prix?.nb_transactions;
+  const q1     = prix?.prix_m2?.q1;
+  const q3     = prix?.prix_m2?.q3;
+  const nbTx   = prix?.nb_transactions;
+
+  const FILTERS = [
+    { v: undefined,     label: "Tous types",   icon: Building },
+    { v: "Appartement", label: "Appartements", icon: Building },
+    { v: "Maison",      label: "Maisons",      icon: Home },
+  ];
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--ivory)" }}>
+    <div style={{ padding: "48px 56px" }}>
 
-      {/* Header */}
-      <div className="px-8 pt-8 pb-0">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: "var(--text-400)" }}>Données officielles</p>
-            <h1 className="font-display" style={{ fontSize: "1.9rem", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-900)", lineHeight: 1.1 }}>
-              Prix Réels — DVF
-            </h1>
-            <p className="mt-1.5" style={{ fontSize: "13px", color: "var(--text-400)" }}>
-              Demandes de Valeurs Foncières · Source data.gouv.fr · {CITY}
-            </p>
-          </div>
-          <button onClick={() => sync.mutate()} disabled={sync.isPending} className="btn btn-primary">
-            <RefreshCw size={14} className={sync.isPending ? "animate-spin" : ""} />
-            {sync.isPending ? "Import..." : "Importer DVF"}
-          </button>
+      {/* ── Header ─────────────────────────────────────── */}
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 40, flexWrap: "wrap", gap: 20 }}>
+        <div>
+          <p className="eyebrow" style={{ marginBottom: 10 }}>Données officielles</p>
+          <h1 className="page-title">Prix DVF — {CITY}</h1>
+          <div className="gold-rule" />
+          <p style={{ fontSize: 13, color: "#6B6057", marginTop: 8 }}>Demandes de Valeurs Foncières · Source data.gouv.fr</p>
         </div>
-      </div>
+        <button onClick={() => sync.mutate()} disabled={sync.isPending} className="btn btn-primary">
+          <RefreshCw size={13} className={sync.isPending ? "animate-spin" : ""} />
+          {sync.isPending ? "Import..." : "Importer DVF"}
+        </button>
+      </header>
 
-      <div className="px-8 py-6 space-y-5">
-
-        {/* Filtres */}
-        <div className="flex gap-2">
-          {[
-            { v: undefined, label: "Tous types", icon: <Building size={13} /> },
-            { v: "Appartement", label: "Appartements", icon: <Building size={13} /> },
-            { v: "Maison", label: "Maisons", icon: <Home size={13} /> },
-          ].map(t => (
-            <button key={t.label} onClick={() => setType(t.v)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all"
+      {/* ── Filtres ─────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
+        {FILTERS.map((t) => {
+          const active = type === t.v;
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.label}
+              onClick={() => setType(t.v)}
               style={{
-                fontSize: "13px", fontWeight: 600,
-                background: type === t.v ? "var(--navy)" : "var(--white)",
-                color: type === t.v ? "white" : "var(--text-600)",
+                display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+                borderRadius: 4, fontSize: 13, fontWeight: 500, cursor: "pointer",
+                fontFamily: "Inter, sans-serif", transition: "all 0.15s",
                 border: "1px solid",
-                borderColor: type === t.v ? "var(--navy)" : "var(--stone-200)",
-                boxShadow: type === t.v ? "0 2px 8px rgba(27,42,74,0.2)" : "var(--shadow-xs)",
+                borderColor: active ? "#1B2A4A" : "#E5DFD8",
+                background: active ? "#1B2A4A" : "#FFFFFF",
+                color: active ? "#FFFFFF" : "#6B6057",
               }}
             >
-              {t.icon}{t.label}
+              <Icon size={13} />
+              {t.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4">
-          <PrixKPI label="Prix médian / m²" value={median} suffix="€/m²" sub="12 derniers mois" color="var(--blue)" trend="up" />
-          <PrixKPI label="1er quartile (Q1)" value={q1} suffix="€/m²" sub="25% des ventes" color="var(--emerald)" />
-          <PrixKPI label="3e quartile (Q3)" value={q3} suffix="€/m²" sub="75% des ventes" color="#7C3AED" />
-          <PrixKPI label="Transactions" value={nbTx} suffix="ventes" sub="12 derniers mois" color="var(--text-700)" />
-        </div>
+      {/* ── KPI row ─────────────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "#E5DFD8", border: "1px solid #E5DFD8", borderRadius: 4, overflow: "hidden", marginBottom: 28 }}>
+        <PrixKPI label="Prix médian / m²" value={median} unit="€/m²"   note="12 derniers mois" color="#B8965A" />
+        <PrixKPI label="1er quartile"     value={q1}     unit="€/m²"   note="25% des ventes"   color="#059669" />
+        <PrixKPI label="3e quartile"      value={q3}     unit="€/m²"   note="75% des ventes"   color="#1B2A4A" />
+        <PrixKPI label="Transactions"     value={nbTx}   unit="ventes"  note="12 derniers mois" color="#6B6057" />
+      </div>
 
-        {chart.length > 0 ? (
-          <>
-            {/* Évolution prix */}
-            <div className="card p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <div className="section-title">Évolution du prix médian / m²</div>
-                  <div className="section-sub">24 derniers mois · {CITY}</div>
-                </div>
-                <span className="tag tag-blue">Source DVF officielle</span>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chart} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity={0.12} />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#94A3B8", fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8", fontFamily: "'DM Mono', monospace" }} tickFormatter={v => `${v.toLocaleString("fr-FR")}€`} axisLine={false} tickLine={false} width={70} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="prix_m2" stroke="#2563EB" strokeWidth={2.5} fill="url(#g1)" dot={false} activeDot={{ r: 5, fill: "#2563EB" }} />
-                </AreaChart>
-              </ResponsiveContainer>
+      {/* ── Charts ─────────────────────────────────────── */}
+      {chart.length > 0 ? (
+        <>
+          <div className="card" style={{ padding: "28px", marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 6 }}>Évolution des prix</div>
+              <div className="section-title">Prix médian / m² sur 24 mois</div>
             </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={chart} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#B8965A" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#B8965A" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5DFD8" vertical={false} />
+                <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#9C8F83", fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#9C8F83", fontFamily: "JetBrains Mono, monospace" }}
+                  tickFormatter={(v) => `${v.toLocaleString("fr-FR")}€`}
+                  axisLine={false} tickLine={false} width={72}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="prix_m2" stroke="#B8965A" strokeWidth={2} fill="url(#goldGrad)" dot={false} activeDot={{ r: 4, fill: "#B8965A" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-            {/* Volume */}
-            <div className="card p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <div className="section-title">Volume de transactions</div>
-                  <div className="section-sub">Nombre de ventes enregistrées par mois</div>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={chart} barSize={22} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#94A3B8", fontFamily: "'DM Sans', sans-serif" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8", fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="nb" fill="#10B981" radius={[5, 5, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <div className="card" style={{ padding: "28px" }}>
+            <div style={{ marginBottom: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 6 }}>Volume</div>
+              <div className="section-title">Transactions par mois</div>
             </div>
-          </>
-        ) : (
-          <div className="card p-20 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "var(--blue-50)" }}>
-                <TrendingUp size={28} style={{ color: "var(--blue)" }} />
-              </div>
-              <div>
-                <p style={{ fontWeight: 700, color: "var(--text-700)", fontSize: "15px" }}>Aucune donnée DVF chargée</p>
-                <p style={{ fontSize: "13px", color: "var(--text-400)", marginTop: "4px" }}>
-                  Cliquez sur <strong>Importer DVF</strong> pour charger les transactions de {CITY}.
-                </p>
-              </div>
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={chart} barSize={20} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5DFD8" vertical={false} />
+                <XAxis dataKey="mois" tick={{ fontSize: 11, fill: "#9C8F83", fontFamily: "Inter, sans-serif" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#9C8F83", fontFamily: "JetBrains Mono, monospace" }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="nb" fill="#1B2A4A" radius={[2, 2, 0, 0]} opacity={0.8} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      ) : (
+        <div className="card" style={{ padding: "80px 32px", textAlign: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 52, height: 52, background: "#F2EFE9", border: "1px solid #E5DFD8", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <TrendingUp size={22} color="#B8965A" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, color: "#18150F", fontSize: 15, marginBottom: 4 }}>Aucune donnée DVF chargée</p>
+              <p style={{ fontSize: 13, color: "#6B6057" }}>Cliquez sur <strong>Importer DVF</strong> pour charger les transactions de {CITY}.</p>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function PrixKPI({ label, value, suffix, sub, color, trend }: {
-  label: string; value: number | undefined; suffix: string; sub: string; color: string; trend?: string;
+function PrixKPI({ label, value, unit, note, color }: {
+  label: string; value: number | undefined; unit: string; note: string; color: string;
 }) {
   return (
-    <div className="card p-5">
-      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-400)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>
+    <div style={{ background: "#FFFFFF", padding: "24px" }}>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9C8F83", fontFamily: "Inter, sans-serif", marginBottom: 10 }}>
         {label}
       </div>
-      <div className="kpi-value" style={{ fontSize: "2.2rem", color: value ? color : "var(--gray-200)", lineHeight: 1 }}>
+      <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: 38, fontWeight: 400, color: value ? color : "#C9BFB4", lineHeight: 1, marginBottom: 6 }}>
         {value ? value.toLocaleString("fr-FR") : "—"}
       </div>
-      <div className="flex items-center gap-2 mt-1.5">
-        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-500)" }}>{suffix}</span>
-        {trend === "up" && <ArrowUp size={11} style={{ color: "var(--emerald)" }} />}
-        {trend === "down" && <ArrowDown size={11} style={{ color: "var(--red)" }} />}
-      </div>
-      <div style={{ fontSize: "11px", color: "var(--text-400)", marginTop: "2px" }}>{sub}</div>
+      <div style={{ fontSize: 11.5, color: "#9C8F83", fontFamily: "Inter, sans-serif" }}>{unit} · {note}</div>
     </div>
   );
 }
